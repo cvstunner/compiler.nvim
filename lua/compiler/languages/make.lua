@@ -30,7 +30,7 @@ function M.run_makefile()
     name = "- Make interpreter",
     strategy = { "orchestrator",
       tasks = {{ name = "- Run Makefile → " .. makefile,
-          cmd = "make -f " .. makefile                                    -- run
+          cmd = "make -f " .. makefile,                                    -- run
           components = { "default_extended" }
       },},},})
   task:start()
