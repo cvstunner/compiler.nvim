@@ -31,8 +31,6 @@ function M.run_makefile()
     strategy = { "orchestrator",
       tasks = {{ name = "- Run Makefile → " .. makefile,
           cmd = "make -f " .. makefile ..                                    -- run
-                " && echo " .. makefile ..                                   -- echo
-                " && echo \"" .. final_message .. "\"",
           components = { "default_extended" }
       },},},})
   task:start()
