@@ -10,9 +10,7 @@ function M.action(option)
     name = "- Make interpreter",
     strategy = { "orchestrator",
       tasks = {{ name = "- Run makefile → make " .. option ,
-        cmd = "make ".. option ..                                            -- run
-              " && echo make " .. option ..                                  -- echo
-              " && echo \"" .. final_message .. "\"",
+        cmd = "make ".. option,                                            -- run
         components = { "default_extended" }
       },},},})
   task:start()
