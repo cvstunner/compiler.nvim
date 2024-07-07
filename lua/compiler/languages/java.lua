@@ -57,8 +57,7 @@ function M.action(selected_option)
       name = "- Java compiler",
       strategy = { "orchestrator",
         tasks = {{ name = "- Run program (class) → \"" .. output .. ".class\"",
-          cmd = "java -cp \"" .. output_dir .. "\" " .. output_filename ..                 -- run
-                " && echo \"" .. output .. ".class\"",                                     -- echo
+          cmd = "java -cp \"" .. output_dir .. "\" " .. output_filename,                   -- run
           components = { "default_extended" }
         },},},})
     task:start()
@@ -96,8 +95,7 @@ function M.action(selected_option)
           output_dir = utils.os_path(executable:match("^(.-[/\\])[^/\\]*$"))
           output_filename = vim.fn.fnamemodify(executable, ':t:r')
           task = { name = "- Run program (class) → \"" .. executable .. "\"",
-            cmd = "java -cp \"" .. output_dir .. "\" " .. output_filename ..               -- run
-                  " && echo \"" .. output_dir .. output_filename .. ".class\"",            -- echo
+            cmd = "java -cp \"" .. output_dir .. "\" " .. output_filename,                 -- run
             components = { "default_extended" }
           }
           table.insert(executables, task) -- store all the executables we've created
@@ -171,8 +169,7 @@ function M.action(selected_option)
       name = "- Java compiler",
       strategy = { "orchestrator",
         tasks = {{ name = "- Run program (jar) → \"" .. output .. ".jar\"",
-          cmd = "java -jar \"" .. output .. ".jar\"" ..                                                     -- run
-                " && echo \"" .. output .. ".jar\"",                                                        -- echo
+          cmd = "java -jar \"" .. output .. ".jar\"",                                                       -- run
           components = { "default_extended" }
         },},},})
     task:start()
@@ -210,8 +207,7 @@ function M.action(selected_option)
         for entry, executable in pairs(solution_executables) do
           executable = utils.os_path(executable, true)
           task = { name = "- Run program (jar) → \"" .. executable .. "\"",
-            cmd = "java -jar " .. executable ..                                                             -- run
-                  " && echo " .. executable,                                                                -- echo
+            cmd = "java -jar " .. executable,                                                               -- run
             components = { "default_extended" }
           }
           table.insert(executables, task) -- store all the executables we've created
@@ -263,8 +259,7 @@ function M.action(selected_option)
       strategy = { "orchestrator",
         tasks = {{ name = "- Start REPL",
           cmd = "echo 'To exit the REPL enter /exit'" ..                     -- echo
-                " && jshell " ..                                             -- run (repl)
-                " && echo \"" .. final_message .. "\"",
+                " && jshell ",                                             -- run (repl)
           components = { "default_extended" }
         },},},})
     task:start()
