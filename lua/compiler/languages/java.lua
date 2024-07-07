@@ -27,7 +27,6 @@ function M.action(selected_option)
   local output = utils.os_path(vim.fn.getcwd() .. "/bin/Main")               -- working_directory/bin/Main.class
   local output_filename = "Main"                                             -- working_directory/bin/Main
   local arguments = "-Xlint:all"                                             -- arguments can be overriden in .solution
-  local final_message = "--task finished--"
 
   --========================== Build as class ===============================--
   if selected_option == "option1" then
@@ -38,9 +37,7 @@ function M.action(selected_option)
           cmd = "rm -f \"" .. output_dir .. "*.class\"" .. " || true" ..                   -- clean
                 " && mkdir -p \"" .. output_dir .. "\"" ..                                 -- mkdir
                 " && javac -d \"" .. output_dir .. "\" " .. arguments .. " " .. files ..   -- compile bytecode (.class)
-                " && java -cp \"" .. output_dir .. "\" " .. output_filename ..             -- run
-                " && echo \"" .. entry_point .. "\"" ..                                    -- echo
-                " && echo \"" .. final_message .. "\"",
+                " && java -cp \"" .. output_dir .. "\" " .. output_filename,               -- run
           components = { "default_extended" }
         },},},})
     task:start()
@@ -51,9 +48,7 @@ function M.action(selected_option)
         tasks = {{ name = "- Build program (class) → \"" .. entry_point .. "\"",
           cmd = "rm -f \"" .. output_dir .. "/*.class\"" .. " || true" ..                  -- clean
                 " && mkdir -p \"" .. output_dir .. "\"" ..                                 -- mkdir
-                " && javac -d \"" .. output_dir .. "\" " .. arguments .. " "  .. files ..  -- compile bytecode (.class)
-                " && echo \"" .. entry_point .. "\"" ..                                    -- echo
-                " && echo \"" .. final_message .. "\"",
+                " && javac -d \"" .. output_dir .. "\" " .. arguments .. " "  .. files,    -- compile bytecode (.class)
           components = { "default_extended" }
         },},},})
     task:start()
@@ -63,8 +58,7 @@ function M.action(selected_option)
       strategy = { "orchestrator",
         tasks = {{ name = "- Run program (class) → \"" .. output .. ".class\"",
           cmd = "java -cp \"" .. output_dir .. "\" " .. output_filename ..                 -- run
-                " && echo \"" .. output .. ".class\"" ..                                   -- echo
-                " && echo \"" .. final_message .. "\"",
+                " && echo \"" .. output .. ".class\"",                                     -- echo
           components = { "default_extended" }
         },},},})
     task:start()
@@ -89,9 +83,7 @@ function M.action(selected_option)
         task = { name = "- Build program (class) → \"" .. entry_point .. "\"",
           cmd = "rm -f \"" .. output_dir .. "/*.class\"" .. " || true" ..                  -- clean
                 " && mkdir -p \"" .. output_dir .. "\"" ..                                 -- mkdir
-                " && javac -d \"" .. output_dir .. "\" " .. arguments .. " "  .. files ..  -- compile bytecode
-                " && echo \"" .. entry_point .. "\""  ..                                   -- echo
-                " && echo \"" .. final_message .. "\"",
+                " && javac -d \"" .. output_dir .. "\" " .. arguments .. " "  .. files,   -- compile bytecode
           components = { "default_extended" }
         }
         table.insert(tasks, task) -- store all the tasks we've created
@@ -105,8 +97,7 @@ function M.action(selected_option)
           output_filename = vim.fn.fnamemodify(executable, ':t:r')
           task = { name = "- Run program (class) → \"" .. executable .. "\"",
             cmd = "java -cp \"" .. output_dir .. "\" " .. output_filename ..               -- run
-                  " && echo \"" .. output_dir .. output_filename .. ".class\"" ..          -- echo
-                  " && echo \"" .. final_message .. "\"",
+                  " && echo \"" .. output_dir .. output_filename .. ".class\"",            -- echo
             components = { "default_extended" }
           }
           table.insert(executables, task) -- store all the executables we've created
@@ -132,9 +123,7 @@ function M.action(selected_option)
         task = { name = "- Build program (class) → \"" .. entry_point .. "\"",
           cmd = "rm -f \"" .. output_dir .. "/*.class\"" .. " || true" ..                  -- clean
                 " && mkdir -p \"" .. output_dir .."\"" ..                                  -- mkdir
-                " && javac -d \"" .. output_dir .. "\" " .. arguments .. " "  .. files ..  -- compile bytecode
-                " && echo \"" .. entry_point .. "\"" ..                                    -- echo
-                " && echo \"" .. final_message .. "\"",
+                " && javac -d \"" .. output_dir .. "\" " .. arguments .. " "  .. files,    -- compile bytecode
           components = { "default_extended" }
         }
         table.insert(tasks, task) -- store all the tasks we've created
@@ -162,9 +151,7 @@ function M.action(selected_option)
           cmd = "rm -f \"" .. output .. ".jar\"" .. " || true" ..                                           -- clean
                 " && mkdir -p \"" .. output_dir .. "\"" ..                                                  -- mkdir
                 " && jar cfe \"" .. output .. ".jar\" " .. output_filename .. " -C \"" .. output_dir .. "\" . " ..  -- compile bytecode (.jar)
-                " && java -jar \"" .. output .. ".jar\"" ..                                                 -- run
-                " && echo \"" .. entry_point .. "\"" ..                                                     -- echo
-                " && echo \"" .. final_message .. "\"",
+                " && java -jar \"" .. output .. ".jar\"",                                                    -- run
           components = { "default_extended" }
         },},},})
     task:start()
@@ -175,9 +162,7 @@ function M.action(selected_option)
         tasks = {{ name = "- Build program (jar) → \"" .. entry_point .. "\"",
           cmd = "rm -f \"" .. output .. ".jar\"" .. " || true" ..                                           -- clean
                 " && mkdir -p \"" .. output_dir .. "\"" ..                                                  -- mkdir
-                " && jar cfe \"" .. output .. ".jar\" " .. output_filename .. " -C \"" .. output_dir .. "\" . " ..  -- compile bytecode (.jar)
-                " && echo \"" .. entry_point .. "\"" ..                                                     -- echo
-                " && echo \"" .. final_message .. "\"",
+                " && jar cfe \"" .. output .. ".jar\" " .. output_filename .. " -C \"" .. output_dir .. "\" . ",  -- compile bytecode (.jar)
           components = { "default_extended" }
         },},},})
     task:start()
@@ -187,8 +172,7 @@ function M.action(selected_option)
       strategy = { "orchestrator",
         tasks = {{ name = "- Run program (jar) → \"" .. output .. ".jar\"",
           cmd = "java -jar \"" .. output .. ".jar\"" ..                                                     -- run
-                " && echo \"" .. output .. ".jar\""  ..                                                     -- echo
-                " && echo \"" .. final_message .. "\"",
+                " && echo \"" .. output .. ".jar\"",                                                        -- echo
           components = { "default_extended" }
         },},},})
     task:start()
@@ -214,9 +198,7 @@ function M.action(selected_option)
         task = { name = "- Build program (jar) → \"" .. entry_point .. "\"",
           cmd = "rm -f \"" .. output .. "\" || true" ..                                                     -- clean
                 " && mkdir -p \"" .. output_dir .. "\"" ..                                                  -- mkdir
-                " && jar cfe \"" .. output .. "\" " .. output_filename .. " -C \"" .. output_dir .. "\" . " ..  -- compile bytecode (jar)
-                " && echo \"" .. entry_point .. "\"" ..                                                     -- echo
-                " && echo \"" .. final_message .. "\"",
+                " && jar cfe \"" .. output .. "\" " .. output_filename .. " -C \"" .. output_dir .. "\" . ",-- compile bytecode (jar)
           components = { "default_extended" }
         }
         table.insert(tasks, task) -- store all the tasks we've created
@@ -229,8 +211,7 @@ function M.action(selected_option)
           executable = utils.os_path(executable, true)
           task = { name = "- Run program (jar) → \"" .. executable .. "\"",
             cmd = "java -jar " .. executable ..                                                             -- run
-                  " && echo " .. executable ..                                                              -- echo
-                  " && echo \"" .. final_message .. "\"",
+                  " && echo " .. executable,                                                                -- echo
             components = { "default_extended" }
           }
           table.insert(executables, task) -- store all the executables we've created
@@ -256,9 +237,7 @@ function M.action(selected_option)
         task = { name = "- Build program (jar) → \"" .. entry_point .. "\"",
           cmd = "rm -f \"" .. output .. ".jar\" " .. " || true" ..                                              -- clean
                 " && mkdir -p \"" .. output_dir .. "\"" ..                                                      -- mkdir
-                " && jar cfe \"" .. output .. ".jar\" " .. output_filename .. " -C \"" .. output_dir .. "\" . " ..  -- compile bytecode (jar)
-                " && echo \"" .. entry_point .. "\"" ..                                                         -- echo
-                " && echo \"" .. final_message .. "\"",
+                " && jar cfe \"" .. output .. ".jar\" " .. output_filename .. " -C \"" .. output_dir .. "\" . ",-- compile bytecode (jar)
           components = { "default_extended" }
         }
         table.insert(tasks, task) -- store all the tasks we've created
