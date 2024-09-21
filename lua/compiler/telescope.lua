@@ -5,24 +5,27 @@ local M = {}
 function M.show()
   -- If working directory is home, don't open telescope.
   if vim.loop.os_homedir() == vim.loop.cwd() then
-    vim.notify("You must :cd your project dir first.\nHome is not allowed as working dir.", vim.log.levels.WARN, {
-      title = "Compiler.nvim"
-    })
+    vim.notify(
+      "You must :cd your project dir first.\nHome is not allowed as working dir.",
+      vim.log.levels.WARN,
+      {
+        title = "Compiler.nvim",
+      }
+    )
     return
   end
 
   -- Dependencies
   local conf = require("telescope.config").values
-  local actions = require "telescope.actions"
-  local state = require "telescope.actions.state"
-  local pickers = require "telescope.pickers"
-  local finders = require "telescope.finders"
+  local actions = require("telescope.actions")
+  local state = require("telescope.actions.state")
+  local pickers = require("telescope.pickers")
+  local finders = require("telescope.finders")
   local utils = require("compiler.utils")
   local utils_bau = require("compiler.utils-bau")
 
   local buffer = vim.api.nvim_get_current_buf()
   local filetype = vim.api.nvim_get_option_value("filetype", { buf = buffer })
-
 
   -- POPULATE
   -- ========================================================================
@@ -58,7 +61,6 @@ function M.show()
     end
   end
 
-
   -- RUN ACTION ON SELECTED
   -- ========================================================================
 
@@ -71,15 +73,18 @@ function M.show()
     if selection then
       -- Do the selected option belong to a build automation utility?
       local bau = nil
+      local makefile_path = nil
       for _, value in ipairs(language.options) do
         if value.text == selection.display then
           bau = value.bau
+          makefile_path = value.path
         end
       end
 
       if bau then -- call the bau backend.
         bau = utils_bau.require_bau(bau)
-        if bau then bau.action(selection.value) end
+        print("path: ", selection, selection.path)
+        if bau then bau.action(selection.value, makefile_path) end
         -- then
         -- clean redo (language)
         _G.compiler_redo_selection = nil
@@ -96,10 +101,8 @@ function M.show()
         _G.compiler_redo_bau_selection = nil
         _G.compiler_redo_bau = nil
       end
-
     end
   end
-
 
   -- SHOW TELESCOPE
   -- ========================================================================
@@ -108,7 +111,7 @@ function M.show()
       .new({}, {
         prompt_title = "Compiler",
         results_title = "Options",
-        finder = finders.new_table {
+        finder = finders.new_table({
           results = language.options,
           entry_maker = function(entry)
             return {
@@ -117,7 +120,7 @@ function M.show()
               ordinal = entry.text,
             }
           end,
-        },
+        }),
         sorter = conf.generic_sorter(),
         attach_mappings = function(_, map)
           map(

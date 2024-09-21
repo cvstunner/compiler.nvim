@@ -8,7 +8,6 @@
 local M = {}
 local utils = require("compiler.utils")
 
-
 -- PARSERS
 -- Private functions to parse bau files.
 -- ============================================================================
@@ -21,8 +20,24 @@ local utils = require("compiler.utils")
 local function get_makefile_opts(path)
   local options = {}
 
+  local makefile = vim.loop.fs_stat("./Makefile")
+
   -- Open the Makefile for reading
-  local file = io.open(path, "r")
+  local file = nil
+  local makefile_path = nil
+
+  if makefile then
+    file = io.open(path .. utils.os_path("/Makefile"), "r")
+  else
+    local content = utils.read_file(vim.fn.getcwd() .. "/project.json")
+    makefile_path = utils.extract_makefile_path(content)
+
+    if makefile_path then
+      file = io.open(utils.join_path(path, utils.os_path(makefile_path)), "r")
+    else
+      return options
+    end
+  end
 
   if file then
     local in_target = false
@@ -30,14 +45,16 @@ local function get_makefile_opts(path)
     -- Iterate through each line in the Makefile
     for line in file:lines() do
       -- Check for lines starting with a target rule (e.g., "target: dependencies")
-      local target = line:match "^(.-):"
+      local target = line:match("^(.-):")
       if target then
         in_target = true
         -- Exclude the ":" and add the option to the list with text and value fields
-        table.insert(
-          options,
-          { text = "Make " .. target, value = target, bau = "make" }
-        )
+        table.insert(options, {
+          text = "Make " .. target,
+          value = target,
+          bau = "make",
+          path = makefile_path,
+        })
       elseif in_target then
         -- If we're inside a target block, stop adding options
         in_target = false
@@ -48,6 +65,13 @@ local function get_makefile_opts(path)
     file:close()
   end
 
+  -- for key, value in pairs(options) do
+  --   print(key, value)
+  --   for k, val in pairs(value) do
+  --     print(k, val)
+  --   end
+  -- end
+  --
   return options
 end
 
@@ -128,13 +152,18 @@ end
 local function get_gradle_cmd_opts(path)
   -- guard clause
   local gradle_kts_file_exists = vim.fn.filereadable(path) == 1
-  local gradle_file_exists = vim.fn.filereadable(vim.fn.fnamemodify(path, ':t:r')) == 1
+  local gradle_file_exists = vim.fn.filereadable(
+    vim.fn.fnamemodify(path, ":t:r")
+  ) == 1
   if not gradle_kts_file_exists and not gradle_file_exists then return {} end
 
   -- parse
   local GRADLE_CMD = "gradle tasks"
-  local UNIX_CMD = GRADLE_CMD .. " | awk '/Application tasks/,/^$/{if (!/^$/) print}' | awk 'NR > 2' | awk '!/--/ && NF {gsub(/ .*/, \"\", $0); print}' | sed '/^$/d'"
-  local WINDOWS_CMD = "powershell -c \"" .. GRADLE_CMD .. [[ | Out-String | Select-String -Pattern '(?sm)Application tasks(.*?)(?:\r?\n){2}' | ForEach-Object { $_.Matches.Groups[1].Value -split '\r?\n' | ForEach-Object -Begin { $skip = $true } { if (-not $skip) { ($_ -split '\s+', 2)[0] } $skip = $false } | Where-Object { $_ -notmatch '--' -and $_.Trim() -ne '' } }"]]
+  local UNIX_CMD = GRADLE_CMD
+    .. " | awk '/Application tasks/,/^$/{if (!/^$/) print}' | awk 'NR > 2' | awk '!/--/ && NF {gsub(/ .*/, \"\", $0); print}' | sed '/^$/d'"
+  local WINDOWS_CMD = 'powershell -c "'
+    .. GRADLE_CMD
+    .. [[ | Out-String | Select-String -Pattern '(?sm)Application tasks(.*?)(?:\r?\n){2}' | ForEach-Object { $_.Matches.Groups[1].Value -split '\r?\n' | ForEach-Object -Begin { $skip = $true } { if (-not $skip) { ($_ -split '\s+', 2)[0] } $skip = $false } | Where-Object { $_ -notmatch '--' -and $_.Trim() -ne '' } }"]]
   local options = {}
   local cmd_output = ""
   local is_windows = os.getenv("OS") == "Windows_NT"
@@ -157,7 +186,6 @@ local function get_gradle_cmd_opts(path)
 
   return options
 end
-
 
 ---Given a build.gradle.kts file, parse all the tasks,
 ---and return them as a table.
@@ -203,10 +231,11 @@ local function get_gradle_opts(path)
         if task_match then
           in_task = true
           task_name = task_match
-          table.insert(
-            options,
-            { text = "Gradle " .. task_name, value = task_name, bau = "gradle" }
-          )
+          table.insert(options, {
+            text = "Gradle " .. task_name,
+            value = task_name,
+            bau = "gradle",
+          })
         elseif in_task then
           local task_end = line:match("}")
           if task_end then
@@ -236,7 +265,7 @@ local function get_nodejs_opts(path)
   local file = io.open(path, "r")
 
   if file then
-    local content = file:read "*all"
+    local content = file:read("*all")
     file:close()
 
     -- parse package.json
@@ -252,30 +281,24 @@ local function get_nodejs_opts(path)
 
     -- Global: NODEJS_PACKAGE_MANAGER
     local success, package_manager =
-        pcall(vim.api.nvim_get_var, "NODEJS_PACKAGE_MANAGER")
+      pcall(vim.api.nvim_get_var, "NODEJS_PACKAGE_MANAGER")
     if not success or package_manager == "" then package_manager = "npm" end
 
     -- Add parsed options to table "options"
     local scripts = package_json.scripts
     if scripts then
       -- Hardcode install/uninstall scripts
-      table.insert(
-        options,
-        {
-          text = package_manager:upper() .. " install",
-          value = package_manager .. " install",
-          bau = "nodejs",
-        }
-      )
+      table.insert(options, {
+        text = package_manager:upper() .. " install",
+        value = package_manager .. " install",
+        bau = "nodejs",
+      })
       if package_manager == "npm" then
-        table.insert(
-          options,
-          {
-            text = package_manager:upper() .. " uninstall *",
-            value = package_manager .. " uninstall *",
-            bau = "nodejs",
-          }
-        )
+        table.insert(options, {
+          text = package_manager:upper() .. " uninstall *",
+          value = package_manager .. " uninstall *",
+          bau = "nodejs",
+        })
       end
 
       -- Afterwards, add the scripts from package.json
@@ -292,7 +315,6 @@ local function get_nodejs_opts(path)
   return options
 end
 
-
 -- FRONTEND
 -- Public functions to call from the frontend.
 -- ============================================================================
@@ -306,32 +328,35 @@ function M.get_bau_opts()
   local options = {}
 
   -- make
-  vim.list_extend(options, get_makefile_opts(
-    working_dir .. utils.os_path("/Makefile")
-  ))
+  vim.list_extend(options, get_makefile_opts(working_dir))
 
   -- cmake
-  vim.list_extend(options, get_cmake_opts(
-    working_dir .. utils.os_path("/CMakeLists.txt")
-  ))
+  vim.list_extend(
+    options,
+    get_cmake_opts(working_dir .. utils.os_path("/CMakeLists.txt"))
+  )
 
   -- meson
-  vim.list_extend(options, get_meson_opts(
-    working_dir .. utils.os_path("/meson.build")
-  ))
+  vim.list_extend(
+    options,
+    get_meson_opts(working_dir .. utils.os_path("/meson.build"))
+  )
 
   -- gradle
-  vim.list_extend(options, get_gradle_cmd_opts(
-    working_dir .. utils.os_path("/build.gradle.kts")
-  ))
-  vim.list_extend(options, get_gradle_opts(
-    working_dir .. utils.os_path("/build.gradle.kts")
-  ))
+  vim.list_extend(
+    options,
+    get_gradle_cmd_opts(working_dir .. utils.os_path("/build.gradle.kts"))
+  )
+  vim.list_extend(
+    options,
+    get_gradle_opts(working_dir .. utils.os_path("/build.gradle.kts"))
+  )
 
   -- nodejs
-  vim.list_extend(options, get_nodejs_opts(
-    working_dir .. utils.os_path("/package.json")
-  ))
+  vim.list_extend(
+    options,
+    get_nodejs_opts(working_dir .. utils.os_path("/package.json"))
+  )
 
   return options
 end
@@ -343,7 +368,8 @@ end
 function M.require_bau(bau)
   local local_path = debug.getinfo(1, "S").source:sub(2)
   local local_path_dir = local_path:match("(.*[/\\])")
-  local module_file_path = utils.os_path(local_path_dir .. "bau/" .. bau .. ".lua")
+  local module_file_path =
+    utils.os_path(local_path_dir .. "bau/" .. bau .. ".lua")
   local success, bau = pcall(dofile, module_file_path)
 
   if success then

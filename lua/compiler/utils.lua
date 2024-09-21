@@ -2,7 +2,6 @@
 
 local M = {}
 
-
 ---Recursively searches for files with the given name
 --- in all directories under start_dir.
 ---
@@ -18,9 +17,17 @@ function M.find_files(start_dir, file_name, surround)
   -- Create the find command with appropriate flags for recursive searching
   local find_command
   if string.sub(package.config, 1, 1) == "\\" then -- Windows
-    find_command = string.format('powershell.exe -Command "Get-ChildItem -Path \\"%s\\" -Recurse -Filter \\"%s\\" -File -Exclude \\".git\\" -ErrorAction SilentlyContinue"', start_dir, file_name)
+    find_command = string.format(
+      'powershell.exe -Command "Get-ChildItem -Path \\"%s\\" -Recurse -Filter \\"%s\\" -File -Exclude \\".git\\" -ErrorAction SilentlyContinue"',
+      start_dir,
+      file_name
+    )
   else -- UNIX-like systems
-    find_command = string.format('find "%s" -type d -name ".git" -prune -o -type f -name "%s" -print 2>/dev/null', start_dir, file_name)
+    find_command = string.format(
+      'find "%s" -type d -name ".git" -prune -o -type f -name "%s" -print 2>/dev/null',
+      start_dir,
+      file_name
+    )
   end
 
   -- Execute the find command and capture the output
@@ -51,7 +58,7 @@ end
 function M.find_files_to_compile(entry_point, pattern)
   local entry_point_dir = vim.fn.fnamemodify(entry_point, ":h")
   local files = M.find_files(entry_point_dir, pattern, true)
-  local files_as_string = table.concat(files ," ")
+  local files_as_string = table.concat(files, " ")
 
   return files_as_string
 end
@@ -77,11 +84,17 @@ function M.parse_solution_file(file_path)
         local key, value = line:match("([^=]+)%s-=%s-(.+)")
         if key and value and current_entry then
           key = vim.trim(key)
-          value = value:gsub("^%s*", ""):gsub(" *#.*", ""):gsub("^['\"](.-)['\"]$", "%1")  -- Remove inline comments and surrounding quotes
+          value = value
+            :gsub("^%s*", "")
+            :gsub(" *#.*", "")
+            :gsub("^['\"](.-)['\"]$", "%1") -- Remove inline comments and surrounding quotes
 
           if key == "entry_point" and value:find("^%$current_buffer") then
             value = string.gsub( -- Substitute $current_buffer by actual path
-              value, "$current_buffer", vim.api.nvim_buf_get_name(0))
+              value,
+              "$current_buffer",
+              vim.api.nvim_buf_get_name(0)
+            )
           end
 
           if string.find(key, "executable") then
@@ -98,9 +111,7 @@ function M.parse_solution_file(file_path)
   config["executables"] = executables
 
   for key, value in pairs(config) do
-    if type(value) == "table" and next(value) == nil then
-      config[key] = nil
-    end
+    if type(value) == "table" and next(value) == nil then config[key] = nil end
   end
 
   return config
@@ -112,10 +123,12 @@ end
 function M.require_language(filetype)
   local local_path = debug.getinfo(1, "S").source:sub(2)
   local local_path_dir = local_path:match("(.*[/\\])")
-  local module_file_path = M.os_path(local_path_dir .. "languages/" .. filetype .. ".lua")
+  local module_file_path =
+    M.os_path(local_path_dir .. "languages/" .. filetype .. ".lua")
   local success, language = pcall(dofile, module_file_path)
 
-  if success then return language
+  if success then
+    return language
   else
     -- local error = "Filetype \"" .. filetype .. "\" not supported by the compiler."
     -- vim.notify(error, vim.log.levels.INFO, { title = "Language unsupported" })
@@ -136,9 +149,9 @@ end
 ---working diectory root, or nil otherwise.
 function M.get_solution_file()
   if M.file_exists(".solution.toml") then
-    return  M.os_path(vim.fn.getcwd() .. "/.solution.toml")
+    return M.os_path(vim.fn.getcwd() .. "/.solution.toml")
   elseif M.file_exists(".solution") then
-    return  M.os_path(vim.fn.getcwd() .. "/.solution")
+    return M.os_path(vim.fn.getcwd() .. "/.solution")
   else
     return nil
   end
@@ -157,11 +170,42 @@ function M.os_path(path, surround)
 
   local separator = string.sub(package.config, 1, 1)
 
-  if surround then
-      path = '"' .. path .. '"'
-  end
+  if surround then path = '"' .. path .. '"' end
 
-  return string.gsub(path, '[/\\]', separator)
+  return string.gsub(path, "[/\\]", separator)
+end
+
+-- mine
+-- Read the JSON file as a string
+function M.read_file(file)
+  local f = io.open(file, "r")
+  if f then
+    local content = f:read("*all")
+    f:close()
+    return content
+  end
+end
+
+-- Manually extract the "makefile.path" from the JSON string
+function M.extract_makefile_path(json_content)
+  -- Use pattern matching to find the path to the Makefile
+  local makefile_path =
+    json_content:match('"makefile"%s*:%s*{[^}]*"path"%s*:%s*"([^"]+)"')
+  return makefile_path
+end
+
+function M.join_path(base, relative)
+  -- Remove trailing slash from base if it exists
+  base = base:gsub("/+$", "")
+
+  -- Check if the relative path is absolute (starts with "/")
+  if relative:sub(1, 1) == "/" then
+    -- If it is absolute, just concatenate the base and the relative path
+    return base .. relative
+  else
+    -- If it's a relative path, concatenate with a slash
+    return base .. "/" .. relative
+  end
 end
 
 return M
