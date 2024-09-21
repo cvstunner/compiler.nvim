@@ -6,7 +6,7 @@ function M.show()
   -- If working directory is home, don't open telescope.
   if vim.loop.os_homedir() == vim.loop.cwd() then
     vim.notify(
-      "You must :cd your project dir first.\nHome is not allowed as working dir.",
+      "   You must :cd your project dir first.\n\t\tHome is not allowed as working dir! ",
       vim.log.levels.WARN,
       {
         title = "Compiler.nvim",
@@ -57,7 +57,13 @@ function M.show()
   for _, option in ipairs(language.options) do
     if option.value ~= "separator" then
       index_counter = index_counter + 1
-      option.text = index_counter .. " - " .. option.text
+      if index_counter >= 22 then _G.compiler_telescope_height = 0.7 end
+
+      if index_counter >= 1 and index_counter <= 9 then
+        option.text = " " .. index_counter .. " - " .. option.text
+      else
+        option.text = index_counter .. " - " .. option.text
+      end
     end
   end
 
@@ -68,12 +74,16 @@ function M.show()
   local function on_option_selected(prompt_bufnr)
     actions.close(prompt_bufnr) -- Close Telescope on selection
     local selection = state.get_selected_entry()
-    if selection.value == "" then return end -- Ignore separators
+
+    -- FIX: separator is missing
+    if selection.value == "separator" then return end -- Ignore separators
 
     if selection then
       -- Do the selected option belong to a build automation utility?
       local bau = nil
       local makefile_path = nil
+      local selectedIndex = selection.ordinal
+
       for _, value in ipairs(language.options) do
         if value.text == selection.display then
           bau = value.bau
@@ -83,14 +93,19 @@ function M.show()
 
       if bau then -- call the bau backend.
         bau = utils_bau.require_bau(bau)
-        print("path: ", selection, selection.path)
         if bau then bau.action(selection.value, makefile_path) end
         -- then
         -- clean redo (language)
         _G.compiler_redo_selection = nil
+        _G.compiler_redo_path = nil
         -- save redo (bau)
         _G.compiler_redo_bau_selection = selection.value
+        _G.compiler_redo_path = makefile_path
         _G.compiler_redo_bau = bau
+
+        _G.compiler_redo_telescope_selected = tonumber(
+          selectedIndex:match("%d+")
+        ) + 1
       else -- call the language backend.
         language.action(selection.value)
         -- then
@@ -100,6 +115,12 @@ function M.show()
         -- clean redo (bau)
         _G.compiler_redo_bau_selection = nil
         _G.compiler_redo_bau = nil
+        _G.compiler_redo_telescope_selected =
+          tonumber(selectedIndex:match("%d+"))
+        print(
+          "compiler_redo_telescope_selected: ",
+          _G.compiler_redo_telescope_selected
+        )
       end
     end
   end
@@ -122,6 +143,12 @@ function M.show()
           end,
         }),
         sorter = conf.generic_sorter(),
+        layout_config = {
+          width = 0.3, -- Set width as a percentage of the screen (e.g., 80%)
+          height = _G.compiler_telescope_height or 0.6, -- Set height as a percentage of the screen (e.g., 60%)
+          prompt_position = "top", -- You can set this to "bottom" as well
+        },
+        default_selection_index = _G.compiler_redo_telescope_selected,
         attach_mappings = function(_, map)
           map(
             "i",

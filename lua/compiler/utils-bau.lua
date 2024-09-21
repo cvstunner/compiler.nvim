@@ -19,23 +19,50 @@ local utils = require("compiler.utils")
 --- { { text: "Make all", value="all", bau = "make"}, { text: "Make hello", value="hello", bau = "make"} ...}
 local function get_makefile_opts(path)
   local options = {}
-
-  local makefile = vim.loop.fs_stat("./Makefile")
+  local pattern = "^([%w_-]+):"
 
   -- Open the Makefile for reading
   local file = nil
   local makefile_path = nil
 
-  if makefile then
-    file = io.open(path .. utils.os_path("/Makefile"), "r")
-  else
-    local content = utils.read_file(vim.fn.getcwd() .. "/project.json")
-    makefile_path = utils.extract_makefile_path(content)
+  local projectFile = utils.file_exists("./project.json")
+  local makefile = utils.file_exists("./Makefile")
 
-    if makefile_path then
-      file = io.open(utils.join_path(path, utils.os_path(makefile_path)), "r")
+  if _G.compiler_redo_type == nil then
+    if projectFile then
+      _G.compiler_redo_type = "project"
+    elseif makefile then
+      _G.compiler_redo_type = "makefile"
     else
-      return options
+      _G.compiler_redo_type = "project"
+    end
+  elseif
+    _G.compiler_redo_type == "makefile"
+    and makefile == nil
+    and projectFile
+  then
+    _G.compiler_redo_type = "project"
+  elseif
+    _G.compiler_redo_type == "project"
+    and projectFile == nil
+    and makefile
+  then
+    _G.compiler_redo_type = "makefile"
+  end
+
+  if _G.compiler_redo_type == "project" then
+    if projectFile then
+      local content = utils.read_file(vim.fn.getcwd() .. "/project.json")
+      makefile_path = utils.extract_makefile_path(content)
+
+      if makefile_path then
+        file =
+          io.open(utils.join_path(path, utils.os_path(makefile_path)), "r")
+      end
+    end
+  elseif _G.compiler_redo_type == "makefile" then
+    if makefile then
+      file = io.open(path .. utils.os_path("/Makefile"), "r")
     end
   end
 
@@ -45,12 +72,13 @@ local function get_makefile_opts(path)
     -- Iterate through each line in the Makefile
     for line in file:lines() do
       -- Check for lines starting with a target rule (e.g., "target: dependencies")
-      local target = line:match("^(.-):")
+      -- "^(.-):"
+      local target = line:match(pattern)
       if target then
         in_target = true
         -- Exclude the ":" and add the option to the list with text and value fields
         table.insert(options, {
-          text = "Make " .. target,
+          text = target,
           value = target,
           bau = "make",
           path = makefile_path,
@@ -65,13 +93,6 @@ local function get_makefile_opts(path)
     file:close()
   end
 
-  -- for key, value in pairs(options) do
-  --   print(key, value)
-  --   for k, val in pairs(value) do
-  --     print(k, val)
-  --   end
-  -- end
-  --
   return options
 end
 

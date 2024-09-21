@@ -4,6 +4,8 @@ local M = {}
 
 -- Backend - overseer tasks performed on option selected
 function M.action(option, path)
+  path = path or "./Makefile"
+
   local overseer = require("overseer")
   local task = overseer.new_task({
     name = "- Make interpreter",
