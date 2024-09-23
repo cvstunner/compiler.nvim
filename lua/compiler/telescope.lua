@@ -117,10 +117,6 @@ function M.show()
         _G.compiler_redo_bau = nil
         _G.compiler_redo_telescope_selected =
           tonumber(selectedIndex:match("%d+"))
-        print(
-          "compiler_redo_telescope_selected: ",
-          _G.compiler_redo_telescope_selected
-        )
       end
     end
   end

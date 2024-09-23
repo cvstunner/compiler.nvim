@@ -1,0 +1,26 @@
+{
+  "name": "project_name",
+  "version": "0.0.1",
+  "domain": {
+    "type": "iot/web/desktop/game",
+    "device": "esp8266/esp32/rp2/arduino",
+    "lang": [
+      "c",
+      "java",
+      "js"
+    ]
+  },
+  "build": {
+    "main": {
+      "device": {
+        "path": "./src/main/main.ext"
+      },
+      "web": {
+        "path": "./web/src/main.ext"
+      }
+    },
+    "makefile": {
+      "path": "./foo/mk/Makefile"
+    }
+  }
+}
